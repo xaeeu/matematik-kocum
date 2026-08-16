@@ -36,7 +36,11 @@ export async function onRequestPost({request,env}){
       if(u.role==='superadmin'){
         const ids=await teacherIds(env,u,requested);teacherId=ids[0]||u.id;
       }
-      await env.DB.prepare(`INSERT INTO teacher_schedules(id,teacher_id,date,hour,status,source) VALUES(?,?,?,?,?,'manual') ON CONFLICT(teacher_id,date,hour) DO UPDATE SET status=excluded.status,source='manual'`).bind(crypto.randomUUID(),teacherId,date,hour,status).run();
+      if(status==='open'){
+        await env.DB.prepare(`DELETE FROM teacher_schedules WHERE teacher_id=? AND date=? AND hour=?`).bind(teacherId,date,hour).run();
+      }else{
+        await env.DB.prepare(`INSERT INTO teacher_schedules(id,teacher_id,date,hour,status,source) VALUES(?,?,?,?,?,'manual') ON CONFLICT(teacher_id,date,hour) DO UPDATE SET status='closed',source='manual'`).bind(crypto.randomUUID(),teacherId,date,hour,'closed').run();
+      }
       return json({ok:true,teacherId,date,hour,status});
     }
     if(b.type==='scheduleRule'){
