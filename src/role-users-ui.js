@@ -1,102 +1,45 @@
 (() => {
-  const getUser = () => { try { return JSON.parse(localStorage.getItem('mk_user') || 'null'); } catch { return null; } };
-  const isAdmin = () => getUser()?.role === 'admin';
-  const isSuper = () => getUser()?.role === 'superadmin';
-  const token = () => localStorage.getItem('mk_session') || '';
-  const headers = () => token() ? { authorization: `Bearer ${token()}`, 'content-type': 'application/json' } : { 'content-type': 'application/json' };
-  const esc = v => String(v ?? '').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));
-  const api = async (path, options={}) => { const res = await fetch(path, { ...options, headers: { ...headers(), ...(options.headers || {}) } }); const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data.error || 'İşlem başarısız.'); return data; };
+  const getUser=()=>{try{return JSON.parse(localStorage.getItem('mk_user')||'null')}catch{return null}};
+  const isTeacher=()=>getUser()?.role==='admin';
+  const isSuper=()=>getUser()?.role==='superadmin';
+  const token=()=>localStorage.getItem('mk_session')||'';
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  const api=async(path,options={})=>{const h={'content-type':'application/json',...(options.headers||{})};if(token())h.authorization=`Bearer ${token()}`;const r=await fetch(`/api${path}`,{...options,headers:h});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'İşlem başarısız.');return d};
+  const addStyles=()=>{if(document.querySelector('#role-users-style'))return;const s=document.createElement('style');s.id='role-users-style';s.textContent=`
+    .ru-toast{position:fixed;right:20px;bottom:20px;z-index:1000000;color:#fff;padding:12px 16px;border-radius:13px;box-shadow:0 14px 34px rgba(16,34,70,.22);font-weight:700;background:#173b76}.ru-toast.error{background:#a92f3b}
+    .ru-wrap{display:grid;gap:16px}.ru-card{background:#fff;border:1px solid #e7ebf2;border-radius:20px;padding:22px;box-shadow:0 10px 30px rgba(16,34,70,.05)}.ru-card h2{margin:0}.ru-sub{color:#6d7788;font-size:13px;margin:5px 0 0}.ru-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-top:1px solid #edf0f4}.ru-row:first-child{border-top:0}.ru-name{font-weight:800}.ru-user{display:block;color:#7b8594;font-size:13px;margin-top:4px}.ru-kids{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.ru-kid{background:#f6f8fb;border:1px solid #e2e8f0;border-radius:10px;padding:7px 10px;font-size:12px}.ru-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.ru-btn{border:1px solid #d8e0ea;background:#fff;border-radius:10px;padding:9px 13px;font-weight:700;cursor:pointer}.ru-btn.primary{background:#173b76;color:#fff;border-color:#173b76}.ru-btn.danger{color:#a72e3c;background:#fff7f7;border-color:#edc7cc}.ru-btn.success{color:#17653a;background:#f1fbf4;border-color:#bde0c8}.ru-badge{display:inline-block;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800;margin-left:7px}.ru-badge.active{background:#e9f7ee;color:#17653a}.ru-badge.inactive{background:#fff0f1;color:#a72e3c}.ru-empty{text-align:center;padding:40px 10px;color:#7b8594}.ru-modal{position:fixed;inset:0;background:rgba(8,18,38,.5);display:grid;place-items:center;padding:20px;z-index:1000001}.ru-modal-card{width:min(500px,100%);background:#fff;border-radius:20px;box-shadow:0 25px 80px rgba(0,0,0,.22);padding:22px}.ru-modal-head{display:flex;justify-content:space-between;align-items:center}.ru-modal-head h2{margin:0}.ru-modal-head button{border:0;background:transparent;font-size:26px;cursor:pointer}.ru-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.ru-field{display:grid;gap:6px;margin-bottom:12px;font-size:12px;font-weight:800;color:#536176}.ru-input{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #d8e0ea;border-radius:10px;font:inherit}
+  `;document.head.appendChild(s)};
+  const toast=(m,bad=false)=>{const x=document.createElement('div');x.className=`ru-toast${bad?' error':''}`;x.textContent=m;document.body.appendChild(x);setTimeout(()=>x.remove(),3000)};
+  const modal=(title,body,actions)=>{document.querySelector('.ru-modal')?.remove();const x=document.createElement('div');x.className='ru-modal';x.innerHTML=`<div class="ru-modal-card"><div class="ru-modal-head"><h2>${esc(title)}</h2><button data-close>×</button></div><div>${body}</div><div class="ru-modal-actions">${actions}</div></div>`;document.body.appendChild(x);x.addEventListener('click',e=>{if(e.target===x||e.target.closest('[data-close]'))x.remove()});return x};
 
-  let initializedRole = '';
-  let busy = false;
-
-  const panel = (title, body, actions='') => {
-    document.querySelector('#role-user-panel')?.remove();
-    const el = document.createElement('div');
-    el.id = 'role-user-panel';
-    el.innerHTML = `<div class="rui-backdrop"></div><div class="rui-box"><div class="rui-head"><h2>${esc(title)}</h2><button class="rui-x" data-rui-close>×</button></div><div class="rui-body">${body}</div>${actions ? `<div class="rui-actions">${actions}</div>` : ''}</div>`;
-    document.body.appendChild(el);
-    el.querySelector('[data-rui-close]')?.addEventListener('click', () => el.remove());
-    el.querySelector('.rui-backdrop')?.addEventListener('click', () => el.remove());
-    return el;
-  };
-
-  const toast = (msg, error=false) => {
-    const el = document.createElement('div'); el.className = `rui-toast ${error ? 'error' : ''}`; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 2800);
-  };
-
-  const addStyles = () => {
-    if (document.getElementById('rui-styles')) return;
-    const s = document.createElement('style'); s.id = 'rui-styles'; s.textContent = `
-      .rui-backdrop{position:fixed;inset:0;background:rgba(16,34,70,.34);backdrop-filter:blur(2px);z-index:99998}
-      .rui-box{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99999;width:min(520px,calc(100% - 32px));background:#fff;border:1px solid #dfe7f1;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.18);overflow:hidden}
-      .rui-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e8edf3}.rui-head h2{margin:0;font-size:19px}.rui-x{border:0;background:transparent;font-size:26px;cursor:pointer;color:#68778b}.rui-body{padding:20px}.rui-actions{padding:14px 20px;border-top:1px solid #e8edf3;display:flex;justify-content:flex-end;gap:8px}.rui-btn{border:1px solid #d7e0eb;background:#fff;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer}.rui-btn.primary{background:#213a6d;color:#fff;border-color:#213a6d}.rui-btn.danger{background:#ba3b48;color:#fff;border-color:#ba3b48}.rui-input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #d7e0eb;border-radius:10px;margin-top:6px}.rui-field{display:block;margin-bottom:14px}.rui-field span{font-size:13px;font-weight:700;color:#42536b}.rui-table-wrap{overflow:auto}.rui-table{width:100%;border-collapse:collapse}.rui-table th,.rui-table td{padding:11px 10px;border-bottom:1px solid #e8edf3;text-align:left;font-size:14px}.rui-table th{color:#637289;font-size:12px}.rui-status.active{color:#17653a;background:#edf8f0}.rui-status.inactive{color:#9b2833;background:#fff0f1}.rui-status{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:700;font-size:12px}.rui-actions-inline{display:flex;gap:6px;flex-wrap:wrap}.rui-toast{position:fixed;right:18px;bottom:18px;z-index:100000;background:#213a6d;color:#fff;padding:11px 14px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.16);font-weight:700}.rui-toast.error{background:#b52d3a}
-    `; document.head.appendChild(s);
-  };
-
-  const renderUsersForTeacher = async () => {
-    if (!isAdmin() || busy) return;
-    busy = true; addStyles();
-    try {
-      const data = await api('/api/data');
-      const content = document.querySelector('.content'); if (!content) return;
-      content.innerHTML = `<section class="panel"><div class="panel-head"><div><h2>Kullanıcılar</h2><p>Öğrenci ve veli hesaplarını görüntüleyin.</p></div></div><div class="section-title">Öğrenciler</div><div class="rui-table-wrap"><table class="rui-table"><thead><tr><th>Öğrenci</th><th>Sınıf</th><th>Veli</th><th>Durum</th></tr></thead><tbody>${(data.students||[]).map(s=>`<tr><td><b>${esc(s.name)}</b><br><small>${esc(s.username)}</small></td><td>${esc(s.grade)}</td><td>${esc(s.parentName||'—')}</td><td><span class="rui-status ${s.status==='inactive'?'inactive':'active'}">${s.status==='inactive'?'Pasif':'Aktif'}</span></td></tr>`).join('')||'<tr><td colspan="4">Henüz öğrenci yok.</td></tr>'}</tbody></table></div><div class="section-title" style="margin-top:24px">Veliler</div><div class="rui-table-wrap"><table class="rui-table"><thead><tr><th>Veli</th><th>Kullanıcı</th><th>Bağlı öğrenci</th><th>Durum</th></tr></thead><tbody>${(data.parents||[]).map(p=>{const children=(data.students||[]).filter(s=>s.parentUserId===p.id).map(s=>esc(s.name)).join(', ')||'—';return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.username)}</td><td>${children}</td><td><span class="rui-status ${p.status==='inactive'?'inactive':'active'}">${p.status==='inactive'?'Pasif':'Aktif'}</span></td></tr>`}).join('')||'<tr><td colspan="4">Henüz veli yok.</td></tr>'}</tbody></table></div></section>`;
-    } catch (e) { toast(e.message, true); } finally { busy = false; }
-  };
-
-  const renderTeacherManagement = async () => {
-    if (!isSuper() || busy) return;
-    busy = true; addStyles();
-    try {
-      const data = await api('/api/data');
-      const content = document.querySelector('.content'); if (!content) return;
-      content.innerHTML = `<section class="panel"><div class="panel-head"><div><h2>Öğretmen Yönetimi</h2><p>Sadece öğretmen hesaplarını yönetin.</p></div><button class="btn primary" data-rui-new-teacher>+ Öğretmen Ekle</button></div><div class="rui-table-wrap"><table class="rui-table"><thead><tr><th>Ad</th><th>Kullanıcı</th><th>Durum</th><th></th></tr></thead><tbody>${(data.teachers||[]).map(t=>`<tr><td><b>${esc(t.name)}</b></td><td>${esc(t.username)}</td><td><span class="rui-status ${t.status==='inactive'?'inactive':'active'}">${t.status==='inactive'?'Pasif':'Aktif'}</span></td><td><button class="rui-btn ${t.status==='inactive'?'primary':'danger'}" data-rui-toggle="${esc(t.id)}" data-rui-status="${esc(t.status||'active')}">${t.status==='inactive'?'Aktifleştir':'Pasife Al'}</button></td></tr>`).join('')||'<tr><td colspan="4">Henüz öğretmen yok.</td></tr>'}</tbody></table></div></section>`;
-      content.querySelector('[data-rui-new-teacher]')?.addEventListener('click', openTeacherForm);
-      content.querySelectorAll('[data-rui-toggle]').forEach(btn => btn.addEventListener('click', () => toggleTeacher(btn.dataset.ruiToggle, btn.dataset.ruiStatus)));
-    } catch (e) { toast(e.message, true); } finally { busy = false; }
-  };
-
-  const openTeacherForm = () => {
-    addStyles();
-    const p = panel('Yeni Öğretmen', `<label class="rui-field"><span>Ad Soyad</span><input class="rui-input" name="name"></label><label class="rui-field"><span>Kullanıcı adı</span><input class="rui-input" name="username"></label><label class="rui-field"><span>Şifre</span><input class="rui-input" name="password" type="password"></label>`, `<button class="rui-btn" data-rui-cancel>Vazgeç</button><button class="rui-btn primary" data-rui-save>Öğretmen Ekle</button>`);
-    p.querySelector('[data-rui-cancel]').onclick = () => p.remove();
-    p.querySelector('[data-rui-save]').onclick = async () => { try { const name=p.querySelector('[name=name]').value.trim(),username=p.querySelector('[name=username]').value.trim(),password=p.querySelector('[name=password]').value; if(!name||!username||!password) throw new Error('Tüm alanları doldurun.'); await api('/api/data',{method:'POST',body:JSON.stringify({type:'userCreate',role:'admin',name,username,password})}); p.remove(); toast('Öğretmen eklendi.'); renderTeacherManagement(); } catch(e) { toast(e.message,true); } };
-  };
-
-  const toggleTeacher = async (id, status) => {
-    const next=status==='active'?'inactive':'active';
-    const p=panel(next==='inactive'?'Öğretmeni pasife al':'Öğretmeni aktifleştir', `<p>Bu öğretmeni ${next==='inactive'?'pasife almak':'aktifleştirmek'} istediğine emin misin?</p>`, `<button class="rui-btn" data-rui-cancel>Vazgeç</button><button class="rui-btn ${next==='inactive'?'danger':'primary'}" data-rui-ok>${next==='inactive'?'Pasife Al':'Aktifleştir'}</button>`);
-    p.querySelector('[data-rui-cancel]').onclick=()=>p.remove();
-    p.querySelector('[data-rui-ok]').onclick=async()=>{try{await api('/api/account-status',{method:'POST',body:JSON.stringify({id,status:next})});p.remove();toast(next==='inactive'?'Öğretmen pasife alındı.':'Öğretmen aktifleştirildi.');renderTeacherManagement();}catch(e){toast(e.message,true)}};
-  };
-
-  const syncTeacherTab = () => {
-    const user=getUser(); if (!user) return;
-    const sidebar=document.querySelector('.nav-scroll'); if(!sidebar) return;
-    let tab=sidebar.querySelector('[data-page="teacher-management"]');
-    if(user.role==='superadmin'){
-      if(!tab){tab=document.createElement('button');tab.className='nav-item';tab.dataset.page='teacher-management';tab.innerHTML='<span>♙</span><span>Öğretmen Yönetimi</span>';sidebar.appendChild(tab);}
-    } else tab?.remove();
-  };
-
-  document.addEventListener('click', e => {
-    syncTeacherTab();
-    const nav=e.target.closest('[data-page]');
-    if(nav?.dataset.page==='users' && isAdmin()){
-      e.preventDefault(); e.stopImmediatePropagation();
-      document.querySelectorAll('.nav-item.active').forEach(x=>x.classList.remove('active')); nav.classList.add('active');
-      document.querySelector('.topbar h1')?.replaceChildren(document.createTextNode('Kullanıcılar'));
-      renderUsersForTeacher(); return;
+  const syncNav=()=>{const u=getUser();const nav=document.querySelector('.nav-scroll');if(!u||!nav)return;addStyles();
+    if(u.role==='admin'){
+      nav.querySelector('[data-page="users"]')?.remove();
+      let b=nav.querySelector('[data-role-nav="parents"]');
+      if(!b){b=document.createElement('button');b.className='nav-item';b.dataset.roleNav='parents';b.innerHTML='<span>♧</span><span>Veliler</span>';b.onclick=e=>{e.preventDefault();openParents()};nav.appendChild(b)}
+      nav.querySelector('[data-role-nav="teacher-management"]')?.remove();
+    } else if(u.role==='superadmin'){
+      nav.querySelector('[data-role-nav="parents"]')?.remove();
+      let b=nav.querySelector('[data-role-nav="teacher-management"]');
+      if(!b){b=document.createElement('button');b.className='nav-item';b.dataset.roleNav='teacher-management';b.innerHTML='<span>♙</span><span>Öğretmen Yönetimi</span>';b.onclick=e=>{e.preventDefault();openTeacherManagement()};nav.appendChild(b)}
+      nav.querySelector('[data-page="users"]')?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();openTeacherManagement()},{capture:true});
+    } else {
+      nav.querySelector('[data-role-nav="parents"]')?.remove();nav.querySelector('[data-role-nav="teacher-management"]')?.remove();
     }
-    if(nav?.dataset.page==='teacher-management' && isSuper()){
-      e.preventDefault(); e.stopImmediatePropagation();
-      document.querySelectorAll('.nav-item.active').forEach(x=>x.classList.remove('active')); nav.classList.add('active');
-      document.querySelector('.topbar h1')?.replaceChildren(document.createTextNode('Öğretmen Yönetimi'));
-      renderTeacherManagement(); return;
-    }
-    if(nav) setTimeout(syncTeacherTab, 80);
-  }, true);
+  };
 
-  const boot = () => { addStyles(); syncTeacherTab(); initializedRole=getUser()?.role||''; };
-  setTimeout(boot, 700); setTimeout(boot, 1600); setTimeout(boot, 3000);
+  const openParents=async()=>{if(!isTeacher())return;const main=document.querySelector('.content');if(!main)return;document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));document.querySelector('[data-role-nav="parents"]')?.classList.add('active');document.querySelector('.topbar h1')&&(document.querySelector('.topbar h1').textContent='Veliler');main.innerHTML='<div class="ru-wrap"><section class="ru-card"><h2>Veliler</h2><p class="ru-sub">Size bağlı veliler ve öğrenciler.</p></section><section class="ru-card" id="ru-parent-list"><div class="ru-empty">Yükleniyor…</div></section></div>';
+    try{const d=await api('/data');const students=(d.students||[]).filter(s=>s.ownerId===getUser()?.id);const ids=[...new Set(students.map(s=>s.parentUserId).filter(Boolean))];const parents=(d.parents||[]).filter(p=>ids.includes(p.id));const box=document.querySelector('#ru-parent-list');box.innerHTML=parents.length?parents.map(p=>{const kids=students.filter(s=>s.parentUserId===p.id);const inactive=p.status!=='active';return `<div class="ru-row"><div><div class="ru-name">${esc(p.name)}<span class="ru-badge ${inactive?'inactive':'active'}">${inactive?'Pasif':'Aktif'}</span></div><span class="ru-user">${esc(p.username)}</span><div class="ru-kids">${kids.map(k=>`<span class="ru-kid">${esc(k.name)} · ${esc(k.grade)}</span>`).join('')||'<span class="ru-kid">Bağlı öğrenci yok</span>'}</div></div><div class="ru-actions"><button class="ru-btn ${inactive?'success':'danger'}" data-parent-status="${p.id}" data-status="${p.status}" data-label="${esc(p.name)}">${inactive?'Aktifleştir':'Pasife Al'}</button></div></div>`}).join(''):'<div class="ru-empty">Size bağlı veli hesabı yok.</div>';
+      box.querySelectorAll('[data-parent-status]').forEach(btn=>btn.onclick=async()=>{const id=btn.dataset.parentStatus,next=btn.dataset.status==='active'?'inactive':'active';const m=modal(next==='inactive'?'Hesabı pasife al':'Hesabı aktifleştir',next==='inactive'?`<p><b>${esc(btn.dataset.label)}</b> ve bağlı öğrencileri pasife alınacak.</p>`:`<p><b>${esc(btn.dataset.label)}</b> ve bağlı öğrencileri tekrar aktif olacak.</p>`,'<button class="ru-btn" data-cancel>Vazgeç</button><button class="ru-btn primary" data-ok>Onayla</button>');m.querySelector('[data-cancel]').onclick=()=>m.remove();m.querySelector('[data-ok]').onclick=async()=>{try{await api('/api/account-status',{method:'POST',body:JSON.stringify({id,status:next})});m.remove();toast(next==='inactive'?'Veli ve öğrencileri pasife alındı.':'Veli ve öğrencileri aktifleştirildi.');openParents()}catch(e){toast(e.message,true)}}});
+    }catch(e){document.querySelector('#ru-parent-list').innerHTML=`<div class="ru-empty">${esc(e.message)}</div>`}}
+
+  const openTeacherManagement=async()=>{if(!isSuper())return;const main=document.querySelector('.content');if(!main)return;document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));document.querySelector('[data-role-nav="teacher-management"]')?.classList.add('active');document.querySelector('.topbar h1')&&(document.querySelector('.topbar h1').textContent='Öğretmen Yönetimi');main.innerHTML='<div class="ru-wrap"><section class="ru-card"><div class="ru-row" style="border-top:0;padding-top:0"><div><h2>Öğretmen Yönetimi</h2><p class="ru-sub">Öğretmen hesaplarını yönetin.</p></div><button class="ru-btn primary" id="ru-add-teacher">+ Öğretmen Ekle</button></div></section><section class="ru-card" id="ru-teacher-list"><div class="ru-empty">Yükleniyor…</div></section></div>';
+    const render=async()=>{const d=await api('/data');const box=document.querySelector('#ru-teacher-list');if(!box)return;const ts=d.teachers||[];box.innerHTML=ts.length?ts.map(t=>`<div class="ru-row"><div><div class="ru-name">${esc(t.name)}<span class="ru-badge ${t.status==='active'?'active':'inactive'}">${t.status==='active'?'Aktif':'Pasif'}</span></div><span class="ru-user">${esc(t.username)}</span></div><div class="ru-actions"><button class="ru-btn ${t.status==='active'?'danger':'success'}" data-teacher-status="${t.id}" data-status="${t.status}" data-label="${esc(t.name)}">${t.status==='active'?'Pasife Al':'Aktifleştir'}</button></div></div>`).join(''):'<div class="ru-empty">Henüz öğretmen hesabı yok.</div>';box.querySelectorAll('[data-teacher-status]').forEach(btn=>btn.onclick=async()=>{const id=btn.dataset.teacherStatus,next=btn.dataset.status==='active'?'inactive':'active';const m=modal(next==='inactive'?'Öğretmeni pasife al':'Öğretmeni aktifleştir',next==='inactive'?`<p><b>${esc(btn.dataset.label)}</b> pasife alınacak.</p><p class="ru-sub">Bağlı öğrenci ve veliler de pasif olur.</p>`:`<p><b>${esc(btn.dataset.label)}</b> tekrar aktif olacak.</p><p class="ru-sub">Bağlı öğrenci ve veliler de aktif olur.</p>`,'<button class="ru-btn" data-cancel>Vazgeç</button><button class="ru-btn primary" data-ok>Onayla</button>');m.querySelector('[data-cancel]').onclick=()=>m.remove();m.querySelector('[data-ok]').onclick=async()=>{try{await api('/api/account-status',{method:'POST',body:JSON.stringify({id,status:next})});m.remove();toast('Durum güncellendi.');render()}catch(e){toast(e.message,true)}}});};
+    document.querySelector('#ru-add-teacher').onclick=()=>{const m=modal('Öğretmen ekle','<form id="ru-teacher-form"><label class="ru-field">Ad soyad<input class="ru-input" name="name" required></label><label class="ru-field">Kullanıcı adı<input class="ru-input" name="username" required></label><label class="ru-field">Şifre<input class="ru-input" name="password" type="password" required></label></form>','<button class="ru-btn" data-cancel>Vazgeç</button><button class="ru-btn primary" data-ok>Öğretmeni ekle</button>');m.querySelector('[data-cancel]').onclick=()=>m.remove();m.querySelector('[data-ok]').onclick=async()=>{const f=document.querySelector('#ru-teacher-form');if(!f.reportValidity())return;const fd=new FormData(f);try{await api('/data',{method:'POST',body:JSON.stringify({type:'userCreate',role:'admin',name:fd.get('name'),username:fd.get('username'),password:fd.get('password')})});m.remove();toast('Öğretmen eklendi.');render()}catch(e){toast(e.message,true)}}};
+    render().catch(e=>{document.querySelector('#ru-teacher-list').innerHTML=`<div class="ru-empty">${esc(e.message)}</div>`});
+  };
+
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-page="users"]');if(b&&isTeacher()){e.preventDefault();e.stopImmediatePropagation();openParents()}else if(b&&isSuper()){e.preventDefault();e.stopImmediatePropagation();openTeacherManagement()}},true);
+  const observer=new MutationObserver(()=>{if(isTeacher()||isSuper())syncNav()});observer.observe(document.body,{subtree:true,childList:true});
+  addStyles();setTimeout(syncNav,300);setTimeout(syncNav,1200);
 })();
