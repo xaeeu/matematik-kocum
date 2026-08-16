@@ -1,4 +1,5 @@
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
+const ownerBind=[];
 const today=()=>new Date().toISOString().slice(0,10);
 const teacherRole=r=>r==='admin'||r==='superadmin';
 async function sessionUser(env,request){if(!env.DB)return null;const t=(request.headers.get('authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!t)return null;return await env.DB.prepare(`SELECT u.id,u.role,u.name,u.username FROM sessions x JOIN users u ON u.id=x.user_id WHERE x.token=? AND x.expires_at>?`).bind(t,new Date().toISOString()).first();}
