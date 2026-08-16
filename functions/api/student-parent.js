@@ -1,6 +1,6 @@
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 const teacherRole=r=>r==='admin'||r==='superadmin';
-async function sessionUser(env,request){const t=(request.headers.get('authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!env.DB||!t)return null;return await env.DB.prepare(`SELECT id,role,name,username FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.token=? AND sessions.expires_at>?`).bind(t,new Date().toISOString()).first();}
+async function sessionUser(env,request){const t=(request.headers.get('authorization')||'').replace(/^Bearer\s+/i,'').trim();if(!env.DB||!t)return null;return await env.DB.prepare(`SELECT users.id,users.role,users.name,users.username FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.token=? AND sessions.expires_at>?`).bind(t,new Date().toISOString()).first();}
 async function hashPassword(password){const data=new TextEncoder().encode(String(password));const digest=await crypto.subtle.digest('SHA-256',data);return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function ownsStudent(env,user,studentId){const s=await env.DB.prepare(`SELECT * FROM students WHERE id=?`).bind(studentId).first();if(!s)return null;if(user.role==='superadmin'||(user.role==='admin'&&s.owner_id===user.id))return s;return null;}
 function str(v){return String(v??'').trim();}
@@ -22,7 +22,7 @@ export async function onRequestPost({request,env}){
       const studentPassword=str(body.studentPassword);
       if(!studentPassword)return json({error:'Öğrenci şifresi gerekli.'},400);
       const ownerId=user.role==='superadmin'&&str(body.ownerId)?str(body.ownerId):user.id;
-      if(user.role==='superadmin'&&ownerId){const t=await env.DB.prepare(`SELECT id FROM users WHERE id=? AND role='admin'`).bind(ownerId).first();if(!t)return json({error:'Seçilen öğretmen bulunamadı.'},400);}
+      if(user.role==='superadmin'){const t=await env.DB.prepare(`SELECT id FROM users WHERE id=? AND role='admin'`).bind(ownerId).first();if(!t)return json({error:'Seçilen öğretmen bulunamadı.'},400);}
 
       let parentId=null;
       const parentName=str(body.parentName), parentUsername=str(body.parentUsername).toLowerCase(), parentPassword=str(body.parentPassword);
@@ -53,6 +53,7 @@ export async function onRequestPost({request,env}){
       const studentId=str(body.studentId);if(!studentId)return json({error:'Öğrenci bulunamadı.'},400);
       const s=await ownsStudent(env,user,studentId);if(!s)return json({error:'Öğrenci bulunamadı veya erişim yok.'},404);
       const ownerId=user.role==='superadmin'&&str(body.ownerId)?str(body.ownerId):s.owner_id;
+      if(user.role==='superadmin'){const t=await env.DB.prepare(`SELECT id FROM users WHERE id=? AND role='admin'`).bind(ownerId).first();if(!t)return json({error:'Seçilen öğretmen bulunamadı.'},400);}
       await env.DB.prepare(`UPDATE users SET name=?,username=? WHERE id=?`).bind(studentName,studentUsername,s.user_id).run();
       await env.DB.prepare(`UPDATE students SET owner_id=?,grade=?,service_type=?,group_name=? WHERE id=?`).bind(ownerId,grade,serviceType,groupName,s.id).run();
 
