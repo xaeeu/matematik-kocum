@@ -1,40 +1,31 @@
 (()=>{
   const getUser=()=>{try{return JSON.parse(localStorage.getItem('mk_user')||'null')}catch{return null}};
   const role=()=>getUser()?.role||'';
-  const escapeHtml=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]));
   const patch=()=>{
-    if(role()==='')return;
+    const r=role();
+    if(!r)return;
     const title=document.querySelector('.topbar h1');
-    if(!title||title.textContent.trim()!=='Genel Bakış')return;
     const content=document.querySelector('.content');
-    if(!content)return;
+    if(!title||!content||title.textContent.trim()!=='Genel Bakış')return;
     const hero=content.querySelector('.hero');
-    const stats=[...content.querySelectorAll('.stats .stat')];
-    const user=role();
+    const current=[...content.querySelectorAll('.stats .stat')].map(x=>({label:x.querySelector('span')?.textContent?.trim()||'',value:x.querySelector('b')?.textContent?.trim()||'0'}));
+    const upcoming=current[1]?.value||'0';
+    const exams=current[3]?.value||'0';
+    const students=current[0]?.value||'0';
     const configs={
-      superadmin:{title:'Sisteme genel bakış',sub:'Öğretmenleri, öğrencileri ve sistemi tek ekrandan yönetin.',stats:[['Öğrenci',()=>document.body.innerText.includes('Öğrenci')?null:null]]},
-      admin:{title:'Bugünün derslerine hazırsınız.',sub:'Öğrencilerinizin derslerini, taleplerini ve sınavlarını tek yerden yönetin.',stats:[['Öğrencileriniz',()=>stats[0]?.querySelector('b')?.textContent||'0'],['Yaklaşan Ders',()=>stats[1]?.querySelector('b')?.textContent||'0'],['Bekleyen Talep',()=>stats[2]?.querySelector('b')?.textContent||'0'],['Deneme / Kazanım',()=>stats[3]?.querySelector('b')?.textContent||'0']]},
-      student:{title:'Bugün senin çalışma günün.',sub:'Derslerini, sınavlarını ve çalışma planını buradan takip et.',stats:[['Yaklaşan Ders',()=>stats[1]?.querySelector('b')?.textContent||'0'],['Tamamlanan Ders',()=>stats[0]?.querySelector('b')?.textContent||'0'],['Denemeler',()=>stats[3]?.querySelector('b')?.textContent||'0'],['Koçluk',()=>document.querySelector('.sidebar [data-page="coaching"]')?'Aktif':'—']]},
-      parent:{title:'Çocuğunuzun eğitimini tek yerden takip edin.',sub:'Dersleri, sınavları ve gelişimi kolayca kontrol edin.',stats:[['Yaklaşan Ders',()=>stats[1]?.querySelector('b')?.textContent||'0'],['Denemeler',()=>stats[3]?.querySelector('b')?.textContent||'0'],['Değerlendirmeler',()=>stats[0]?.querySelector('b')?.textContent||'0'],['Koçluk',()=>document.querySelector('.sidebar [data-page="coaching"]')?'Aktif':'—']]}
-    }[user];
+      superadmin:['Sisteme genel bakış','Öğretmenleri, öğrencileri ve sistemi tek ekrandan yönetin.'],
+      admin:['Bugünün derslerine hazırsınız.','Öğrencilerinizin derslerini, taleplerini ve sınavlarını tek yerden yönetin.'],
+      student:['Bugün senin çalışma günün.','Derslerini, sınavlarını ve çalışma planını buradan takip et.'],
+      parent:['Çocuğunuzun eğitimini tek yerden takip edin.','Dersleri, sınavları ve gelişimi kolayca takip edin.']
+    }[r];
     if(!configs)return;
-    if(hero){const h=hero.querySelector('h2');const p=hero.querySelector('p');if(h)h.textContent=configs.title;if(p)p.textContent=configs.sub;}
-    if(user==='student'||user==='parent'){
-      if(stats.length){
-        const labels=configs.stats;
-        stats.forEach((card,i)=>{const label=card.querySelector('span');const value=card.querySelector('b');if(label)label.textContent=labels[i][0];if(value){const v=labels[i][1]();value.textContent=escapeHtml(v);}})
-      }
-      const pending=content.querySelector('.stats .stat:nth-child(3)');
-      if(pending)pending.remove();
-      const studentCount=content.querySelector('.stats .stat:first-child');
-      if(studentCount && user==='student'){
-        const wrap=content.querySelector('.stats');
-        if(wrap&&!wrap.dataset.rolePatched){
-          wrap.dataset.rolePatched='1';
-          const cards=[...wrap.querySelectorAll('.stat')];
-          if(cards[1]&&cards[0]){cards[0].querySelector('span').textContent='Yaklaşan Ders';cards[0].querySelector('b').textContent=cards[1].querySelector('b')?.textContent||'0';}
-        }
-      }
+    if(hero){hero.querySelector('h2')?.replaceChildren(document.createTextNode(configs[0]));hero.querySelector('p')?.replaceChildren(document.createTextNode(configs[1]));}
+    const statsWrap=content.querySelector('.stats');
+    if(statsWrap&&(r==='student'||r==='parent')){
+      const cards=r==='student'?
+        [['Yaklaşan Ders',upcoming],['Denemeler',exams],['Tamamlanan Ders',students],['Koçluk','Aktif']]:
+        [['Yaklaşan Ders',upcoming],['Denemeler',exams],['Değerlendirmeler',students],['Koçluk','Aktif']];
+      statsWrap.innerHTML=cards.map(([l,v])=>`<div class="stat"><span>${l}</span><b>${v}</b></div>`).join('');
     }
     content.dataset.roleDashboardV2='1';
   };
