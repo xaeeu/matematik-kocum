@@ -1,1 +1,1 @@
-INSERT OR IGNORE INTO users(id,role,name,username,password_hash,status) VALUES('u_admin','superadmin','Tufan Kalle','xaeu','d5bcf6d152c93d811d8b4c2e926c1229b17367be2e81f55e5dcfca4b0a3dfbc8','active');
+INSERT OR IGNORE INTO users(id,role,name,username,password_hash,status) VALUES('u_admin','superadmin','Tufan Kalle','admin','c83a675c96cea89d9ce2644c51fff3622c39005964de5a1b00fe8af2cf468a64','active');
