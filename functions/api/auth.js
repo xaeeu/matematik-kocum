@@ -17,17 +17,18 @@ export async function onRequestPost({ request, env }) {
 
     const user = await env.DB.prepare('SELECT id, role, name, username, status FROM users WHERE username = ?').bind(username).first();
     if (!user) return json({ error:'Kullanıcı adı veya şifre hatalı.' },401);
+
     if (user.status !== 'active') {
-      if (user.role === 'admin') return json({ error:'Hesabınız pasif. Lütfen adminle iletişime geçin.' },403);
-      if (user.role === 'student' || user.role === 'parent') return json({ error:'Hesabınız pasif. Lütfen öğretmeninizle iletişime geçin.' },403);
-      return json({ error:'Hesabınız pasif.' },403);
+      if (user.role === 'admin') return json({ error:'Hesabınız dondurulmuştur. Lütfen adminle iletişime geçiniz.' },403);
+      if (user.role === 'student' || user.role === 'parent') return json({ error:'Hesabınız dondurulmuştur. Lütfen öğretmeniniz ile iletişime geçiniz.' },403);
+      return json({ error:'Hesabınız dondurulmuştur.' },403);
     }
 
     if (user.role === 'student' || user.role === 'parent') {
       const teacherCheck = user.role === 'student'
         ? await env.DB.prepare(`SELECT u.status FROM students s JOIN users u ON u.id=s.owner_id WHERE s.user_id=?`).bind(user.id).first()
         : await env.DB.prepare(`SELECT u.status FROM students s JOIN users u ON u.id=s.owner_id WHERE s.parent_user_id=? AND s.owner_id IS NOT NULL LIMIT 1`).bind(user.id).first();
-      if (teacherCheck && teacherCheck.status !== 'active') return json({ error:'Öğretmen hesabı pasif. Lütfen öğretmeninizle iletişime geçin.' },403);
+      if (teacherCheck && teacherCheck.status !== 'active') return json({ error:'Öğretmen hesabı dondurulmuştur. Lütfen öğretmeniniz ile iletişime geçiniz.' },403);
     }
 
     const stored = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(user.id).first();
