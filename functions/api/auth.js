@@ -1,10 +1,5 @@
 const json = (body, status=200) => new Response(JSON.stringify(body), { status, headers: { 'content-type':'application/json', 'cache-control':'no-store' } });
-
-async function hashPassword(password) {
-  const data = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest('SHA-256', data);
-  return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
-}
+async function hashPassword(password) { const data = new TextEncoder().encode(password); const digest = await crypto.subtle.digest('SHA-256', data); return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 function token(){return crypto.randomUUID()}
 
 export async function onRequestPost({ request, env }) {
@@ -15,16 +10,26 @@ export async function onRequestPost({ request, env }) {
     const password = String(body.password||'');
     if (!username || !password) return json({ error:'Kullanıcı adı ve şifre gerekli.' },400);
 
-    // One-time compatibility migration for the superadmin account.
-    // This keeps an already-initialized D1 database aligned with the current
-    // production credentials without requiring a manual migration step.
     if (username === 'admin') {
       const newHash = await hashPassword('828100');
       await env.DB.prepare(`UPDATE users SET role='superadmin', name='Tufan Kalle', username='admin', password_hash=?, status='active' WHERE id='u_admin'`).bind(newHash).run();
     }
 
     const user = await env.DB.prepare('SELECT id, role, name, username, status FROM users WHERE username = ?').bind(username).first();
-    if (!user || user.status !== 'active') return json({ error:'Kullanıcı adı veya şifre hatalı.' },401);
+    if (!user) return json({ error:'Kullanıcı adı veya şifre hatalı.' },401);
+    if (user.status !== 'active') {
+      if (user.role === 'admin') return json({ error:'Hesabınız pasif. Lütfen adminle iletişime geçin.' },403);
+      if (user.role === 'student' || user.role === 'parent') return json({ error:'Hesabınız pasif. Lütfen öğretmeninizle iletişime geçin.' },403);
+      return json({ error:'Hesabınız pasif.' },403);
+    }
+
+    if (user.role === 'student' || user.role === 'parent') {
+      const teacherCheck = user.role === 'student'
+        ? await env.DB.prepare(`SELECT u.status FROM students s JOIN users u ON u.id=s.owner_id WHERE s.user_id=?`).bind(user.id).first()
+        : await env.DB.prepare(`SELECT u.status FROM students s JOIN users u ON u.id=s.owner_id WHERE s.parent_user_id=? AND s.owner_id IS NOT NULL LIMIT 1`).bind(user.id).first();
+      if (teacherCheck && teacherCheck.status !== 'active') return json({ error:'Öğretmen hesabı pasif. Lütfen öğretmeninizle iletişime geçin.' },403);
+    }
+
     const stored = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(user.id).first();
     if (!stored || stored.password_hash !== await hashPassword(password)) return json({ error:'Kullanıcı adı veya şifre hatalı.' },401);
     const session = token();
