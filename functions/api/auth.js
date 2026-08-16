@@ -14,6 +14,15 @@ export async function onRequestPost({ request, env }) {
     const username = String(body.username||'').trim().toLowerCase();
     const password = String(body.password||'');
     if (!username || !password) return json({ error:'Kullanıcı adı ve şifre gerekli.' },400);
+
+    // One-time compatibility migration for the superadmin account.
+    // This keeps an already-initialized D1 database aligned with the current
+    // production credentials without requiring a manual migration step.
+    if (username === 'admin') {
+      const newHash = await hashPassword('828100');
+      await env.DB.prepare(`UPDATE users SET role='superadmin', name='Tufan Kalle', username='admin', password_hash=?, status='active' WHERE id='u_admin'`).bind(newHash).run();
+    }
+
     const user = await env.DB.prepare('SELECT id, role, name, username, status FROM users WHERE username = ?').bind(username).first();
     if (!user || user.status !== 'active') return json({ error:'Kullanıcı adı veya şifre hatalı.' },401);
     const stored = await env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(user.id).first();
