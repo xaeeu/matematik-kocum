@@ -3,3 +3,8 @@ compatibility_date = "2026-08-16"
 
 [assets]
 directory = "./dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "matematik-kocum-db"
+database_id = "0b314f06-3cec-4323-8cdb-540546acfe34"
