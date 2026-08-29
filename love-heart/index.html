@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>I Love You ❤️</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}
+  body{font-family:Arial,sans-serif;display:grid;place-items:center;touch-action:manipulation}
+  canvas{display:block;width:100vw;height:100vh}
+  .hint{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);color:rgba(255,255,255,.55);font-size:12px;letter-spacing:.08em;opacity:0;animation:fade 2s 5s forwards}
+  @keyframes fade{to{opacity:1}}
+</style>
+</head>
+<body>
+<canvas id="heart"></canvas>
+<div class="hint">TAP TO RESTART</div>
+<script>
+const canvas=document.getElementById('heart');
+const ctx=canvas.getContext('2d');
+let w,h,dpr,scale,particles=[],started=performance.now(),raf;
+const pink='#ffb6c1';
+
+function resize(){
+  dpr=Math.min(devicePixelRatio||1,2);
+  w=innerWidth; h=innerHeight;
+  canvas.width=w*dpr; canvas.height=h*dpr;
+  canvas.style.width=w+'px'; canvas.style.height=h+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  scale=Math.min(w/38,h/34);
+}
+
+function heartPoint(t,s){
+  // Same classic parametric heart shape used by the reference animation.
+  const x=16*Math.pow(Math.sin(t),3);
+  const y=-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t));
+  return {x:x*s,y:y*s};
+}
+
+function build(){
+  particles=[];
+  const text='I love you';
+  const rows=11;
+  for(let row=0;row<rows;row++){
+    const s=0.48+(row/(rows-1))*0.72;
+    for(let i=0;i<120;i++){
+      const t=i/120*Math.PI*2;
+      const p=heartPoint(t,s);
+      particles.push({x:p.x,y:p.y,text,delay:row*150+i*10,alpha:.45+Math.random()*.5,rot:(Math.random()-.5)*.08});
+    }
+  }
+  // A little extra density around the lower point, like the reference.
+  for(let i=0;i<180;i++){
+    const t=Math.PI*.50+(Math.random()-.5)*.34;
+    const s=.55+Math.random()*.70;
+    const p=heartPoint(t,s);
+    particles.push({x:p.x,y:p.y,text,delay:700+Math.random()*1200,alpha:.5+Math.random()*.5,rot:(Math.random()-.5)*.08});
+  }
+  started=performance.now();
+}
+
+function draw(now){
+  ctx.clearRect(0,0,w,h);
+  const elapsed=now-started;
+  ctx.save();
+  ctx.translate(w/2,h/2+scale*1.3);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font=`700 ${Math.max(5,scale*.48)}px Arial`;
+  for(const p of particles){
+    const progress=Math.max(0,Math.min(1,(elapsed-p.delay)/900));
+    if(progress<=0)continue;
+    const ease=1-Math.pow(1-progress,3);
+    ctx.save();
+    ctx.globalAlpha=p.alpha*Math.min(1,progress*2);
+    ctx.fillStyle=pink;
+    ctx.translate(p.x*ease,p.y*ease);
+    ctx.rotate(p.rot);
+    ctx.fillText(p.text,0,0);
+    ctx.restore();
+  }
+  ctx.restore();
+  raf=requestAnimationFrame(draw);
+}
+
+addEventListener('resize',resize);
+addEventListener('pointerdown',()=>build());
+resize();build();cancelAnimationFrame(raf);raf=requestAnimationFrame(draw);
+</script>
+</body>
+</html>
