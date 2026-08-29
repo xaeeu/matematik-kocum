@@ -1,2 +1,31 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>I Love You ❤️</title><style>*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}body{font-family:Arial,sans-serif;display:grid;place-items:center;touch-action:manipulation}canvas{display:block;width:100vw;height:100vh}.hint{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);color:rgba(255,255,255,.55);font-size:12px;letter-spacing:.08em;opacity:0;animation:fade 2s 5s forwards}@keyframes fade{to{opacity:1}}</style></head><body><canvas id="heart"></canvas><div class="hint">TAP TO RESTART</div><script>const canvas=document.getElementById('heart'),ctx=canvas.getContext('2d');let w,h,dpr,scale,particles=[],started=performance.now();const pink='#ffb6c1';function resize(){dpr=Math.min(devicePixelRatio||1,2);w=innerWidth;h=innerHeight;canvas.width=w*dpr;canvas.height=h*dpr;canvas.style.width=w+'px';canvas.style.height=h+'px';ctx.setTransform(dpr,0,0,dpr,0,0);scale=Math.min(w/38,h/34)}function heartPoint(t,s){const x=16*Math.pow(Math.sin(t),3),y=-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t));return{x:x*s,y:y*s}}function build(){particles=[];const text='I love you';for(let row=0;row<11;row++){const s=.48+(row/10)*.72;for(let i=0;i<120;i++){const p=heartPoint(i/120*Math.PI*2,s);particles.push({x:p.x,y:p.y,text,delay:row*150+i*10,alpha:.45+Math.random()*.5,rot:(Math.random()-.5)*.08})}}for(let i=0;i<180;i++){const p=heartPoint(Math.PI*.5+(Math.random()-.5)*.34,.55+Math.random()*.70);particles.push({x:p.x,y:p.y,text,delay:700+Math.random()*1200,alpha:.5+Math.random()*.5,rot:(Math.random()-.5)*.08})}started=performance.now()}function draw(now){ctx.clearRect(0,0,w,h);const elapsed=now-started;ctx.save();ctx.translate(w/2,h/2+scale*1.3);ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`700 ${Math.max(5,scale*.48)}px Arial`;for(const p of particles){const progress=Math.max(0,Math.min(1,(elapsed-p.delay)/900));if(progress<=0)continue;const ease=1-Math.pow(1-progress,3);ctx.save();ctx.globalAlpha=p.alpha*Math.min(1,progress*2);ctx.fillStyle=pink;ctx.translate(p.x*ease,p.y*ease);ctx.rotate(p.rot);ctx.fillText(p.text,0,0);ctx.restore()}ctx.restore();requestAnimationFrame(draw)}addEventListener('resize',resize);addEventListener('pointerdown',build);resize();build();requestAnimationFrame(draw);</script></body></html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#102246" />
+    <meta name="description" content="Matematik Koçum" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <title>Matematik Koçum</title>
+    <style>html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f7fb;color:#102246}#startup{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}#startup-card{width:min(420px,100%);background:#fff;border:1px solid #e1e7ef;border-radius:20px;padding:28px;box-shadow:0 16px 50px rgba(16,34,70,.08)}#startup-card h1{margin:0 0 8px;font-size:28px}#startup-card p{margin:0;color:#647286}</style>
+  </head>
+  <body>
+    <div id="app"><div id="startup"><div id="startup-card"><h1>Matematik Koçum</h1><p>Uygulama yükleniyor...</p></div></div></div>
+    <script type="module" src="/src/error-toasts.js?v=20260816-1800"></script>
+    <script type="module" src="/src/main.js?v=20260817-0700"></script>
+    <script type="module" src="/src/ux-patches.js?v=20260816-1800"></script>
+    <script type="module" src="/src/site-panels.js?v=20260816-1830"></script>
+    <script type="module" src="/src/student-parent.js?v=20260816-1830"></script>
+    <script type="module" src="/src/calendar-lesson-fix.js?v=20260816-1830"></script>
+    <script type="module" src="/src/account-status-ui.js?v=20260816-1840"></script>
+    <script type="module" src="/src/video-visibility.js?v=20260816-1800"></script>
+    <script type="module" src="/src/core-fixes.js?v=20260816-1800"></script>
+    <script type="module" src="/src/hide-users-menu.js?v=20260816-2000"></script>
+    <script type="module" src="/src/student-registration-restore.js?v=20260816-2022"></script>
+    <script type="module" src="/src/academic-groups.js?v=20260817-0700"></script>
+    <script type="module" src="/src/academic-design.js?v=20260817-0700"></script>
+    <script type="module" src="/src/student-list-modern.js?v=20260816-2038"></script>
+    <script type="module" src="/src/student-profile.js?v=20260819-0303"></script>
+    <script type="module" src="/src/role-dashboard.js?v=20260816-2320"></script>
+  </body>
+</html>
